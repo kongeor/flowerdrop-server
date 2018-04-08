@@ -4,7 +4,9 @@ import com.codahale.metrics.annotation.Timed;
 import io.dropwizard.hibernate.UnitOfWork;
 import io.github.kongeor.flowerdrop.server.core.User;
 import io.github.kongeor.flowerdrop.server.dao.UserDao;
+import io.github.kongeor.flowerdrop.server.dto.FlowerDto;
 import io.github.kongeor.flowerdrop.server.dto.UserDto;
+import io.github.kongeor.flowerdrop.server.mapper.FlowerMapper;
 import io.github.kongeor.flowerdrop.server.mapper.UserMapper;
 
 import javax.ws.rs.GET;
@@ -12,6 +14,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
+import java.util.List;
 
 @Path("/api/users")
 @Produces(MediaType.APPLICATION_JSON)
@@ -30,5 +33,14 @@ public class UserResource {
     public UserDto findUser(@PathParam("id") Integer id) {
         User user = userDao.findById(id);
         return UserMapper.INSTANCE.userToDto(user);
+    }
+
+    @Path("/{id}/flowers")
+    @GET
+    @Timed
+    @UnitOfWork
+    public List<FlowerDto> findUserFlowers(@PathParam("id") Integer id) {
+        User user = userDao.findById(id);
+        return FlowerMapper.INSTANCE.flowersToDtos(user.getFlowers());
     }
 }
