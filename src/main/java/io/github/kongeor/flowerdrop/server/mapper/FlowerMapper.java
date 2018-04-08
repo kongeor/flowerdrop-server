@@ -8,7 +8,7 @@ import org.mapstruct.factory.Mappers;
 
 import java.util.List;
 
-@Mapper
+@Mapper(uses = WateringMapper.class)
 public interface FlowerMapper {
 
     FlowerMapper INSTANCE = Mappers.getMapper(FlowerMapper.class);

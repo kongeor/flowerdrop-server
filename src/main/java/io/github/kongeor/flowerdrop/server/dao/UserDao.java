@@ -14,7 +14,7 @@ public class UserDao extends AbstractDAO<User> {
         return get(id);
     }
 
-    public long create(User user) {
+    public long saveOrUpdate(User user) {
         return persist(user).getId();
     }
 }
