@@ -14,7 +14,7 @@ public class FlowerDao extends AbstractDAO<Flower> {
         return get(id);
     }
 
-    public long create(Flower flower) {
+    public int create(Flower flower) {
         return persist(flower).getId();
     }
 }

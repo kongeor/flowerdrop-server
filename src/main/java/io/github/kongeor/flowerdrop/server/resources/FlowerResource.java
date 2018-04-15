@@ -7,10 +7,7 @@ import io.github.kongeor.flowerdrop.server.dao.FlowerDao;
 import io.github.kongeor.flowerdrop.server.dto.FlowerDto;
 import io.github.kongeor.flowerdrop.server.mapper.FlowerMapper;
 
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
 @Path("/api/flowers")
@@ -27,8 +24,21 @@ public class FlowerResource {
     @GET
     @Timed
     @UnitOfWork
-    public FlowerDto findUser(@PathParam("id") Integer id) {
+    public FlowerDto findFlower(@PathParam("id") Integer id) {
         Flower flower = flowerDao.findById(id);
         return FlowerMapper.INSTANCE.flowerToDto(flower);
+    }
+
+    @POST
+    @Timed
+    @UnitOfWork
+    @Consumes(MediaType.APPLICATION_JSON)
+    public FlowerDto createFlower(FlowerDto flowerDto) {
+        Flower flower = new Flower();
+        flower.setName(flowerDto.getName());
+        flower.setDescription(flowerDto.getDescription());
+        int id = flowerDao.create(flower);
+        Flower dbFlower = flowerDao.findById(id);
+        return FlowerMapper.INSTANCE.flowerToDto(dbFlower);
     }
 }
