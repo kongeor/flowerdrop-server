@@ -4,8 +4,11 @@ import io.dropwizard.hibernate.AbstractDAO;
 import io.github.kongeor.flowerdrop.server.core.Flower;
 import org.hibernate.SessionFactory;
 
+import javax.inject.Inject;
+
 public class FlowerDao extends AbstractDAO<Flower> {
 
+    @Inject
     public FlowerDao(SessionFactory sessionFactory) {
         super(sessionFactory);
     }

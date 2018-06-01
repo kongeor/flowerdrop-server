@@ -13,5 +13,5 @@ public class FlowerDto {
     private Integer id;
     private String name;
     private String description;
-    private List<WateringDto> waterings = new ArrayList<>();
+//    private List<WateringDto> waterings = new ArrayList<>();
 }

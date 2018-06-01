@@ -3,10 +3,15 @@ package io.github.kongeor.flowerdrop.server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.google.common.collect.ImmutableMap;
+import com.google.inject.AbstractModule;
+import com.google.inject.matcher.Matchers;
 import io.dropwizard.Application;
 import io.dropwizard.db.PooledDataSourceFactory;
 import io.dropwizard.flyway.FlywayBundle;
 import io.dropwizard.hibernate.HibernateBundle;
+import io.dropwizard.hibernate.UnitOfWork;
+import io.dropwizard.hibernate.UnitOfWorkAspect;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.github.kongeor.flowerdrop.server.core.Flower;
@@ -18,6 +23,13 @@ import io.github.kongeor.flowerdrop.server.dao.WateringDao;
 import io.github.kongeor.flowerdrop.server.dto.UserDto;
 import io.github.kongeor.flowerdrop.server.resources.FlowerResource;
 import io.github.kongeor.flowerdrop.server.resources.UserResource;
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import ru.vyarus.dropwizard.guice.GuiceBundle;
+
+import java.lang.reflect.InvocationTargetException;
 
 public class FlowerDropApplication extends Application<FlowerDropConfiguration> {
 
@@ -49,18 +61,81 @@ public class FlowerDropApplication extends Application<FlowerDropConfiguration> 
 
     @Override
     public void initialize(final Bootstrap<FlowerDropConfiguration> bootstrap) {
+
+        // needs to come first
         bootstrap.addBundle(hibernateBundle);
+
+        bootstrap.addBundle(GuiceBundle.builder()
+                .enableAutoConfig(getClass().getPackage().getName())
+                .modules(new HbnModule(hibernateBundle))
+                .build());
+
         bootstrap.addBundle(flywayBundle);
+    }
+
+    private static class HbnModule extends AbstractModule {
+
+        private final HibernateBundle<FlowerDropConfiguration> hbnBundle;
+
+        public HbnModule(HibernateBundle<FlowerDropConfiguration> hbnBundle) {
+            this.hbnBundle = hbnBundle;
+        }
+
+        @Override
+        protected void configure() {
+            bind(SessionFactory.class).toInstance(hbnBundle.getSessionFactory());
+
+            bindInterceptor(Matchers.any(), Matchers.annotatedWith(UnitOfWork.class),
+                    new UnitOfWorkInterceptor(hbnBundle));
+        }
+    }
+
+    /**
+     * Same approach as in {@link io.dropwizard.hibernate.UnitOfWorkAwareProxyFactory}
+     */
+    private static class UnitOfWorkInterceptor implements MethodInterceptor {
+
+
+        private final ImmutableMap<String, SessionFactory> sessionFactories;
+
+        public UnitOfWorkInterceptor(HibernateBundle<?>... bundles) {
+            final ImmutableMap.Builder<String, SessionFactory> sessionFactoriesBuilder = ImmutableMap.builder();
+            for (HibernateBundle<?> bundle : bundles) {
+//                sessionFactoriesBuilder.put(bundle.name(), bundle.getSessionFactory());
+                sessionFactoriesBuilder.put("hibernate", bundle.getSessionFactory());
+            }
+            sessionFactories = sessionFactoriesBuilder.build();
+        }
+
+        @Override
+        public Object invoke(MethodInvocation methodInvocation) throws Throwable {
+            final UnitOfWork unitOfWork = methodInvocation.getMethod().getAnnotation(UnitOfWork.class);
+            final UnitOfWorkAspect unitOfWorkAspect = new UnitOfWorkAspect(sessionFactories);
+            try {
+                unitOfWorkAspect.beforeStart(unitOfWork);
+                Object result = methodInvocation.proceed();
+                unitOfWorkAspect.afterEnd();
+                return result;
+            } catch (InvocationTargetException e) {
+                unitOfWorkAspect.onError();
+                throw e.getCause();
+            } catch (Exception e) {
+                unitOfWorkAspect.onError();
+                throw e;
+            } finally {
+                unitOfWorkAspect.onFinish();
+            }
+        }
     }
 
     @Override
     public void run(final FlowerDropConfiguration configuration,
                     final Environment environment) {
-        UserDao userDao = new UserDao(hibernateBundle.getSessionFactory());
-        FlowerDao flowerDao = new FlowerDao(hibernateBundle.getSessionFactory());
-        WateringDao wateringDao = new WateringDao(hibernateBundle.getSessionFactory());
-        environment.jersey().register(new UserResource(userDao, wateringDao));
-        environment.jersey().register(new FlowerResource(flowerDao));
+//        UserDao userDao = new UserDao(hibernateBundle.getSessionFactory());
+//        FlowerDao flowerDao = new FlowerDao(hibernateBundle.getSessionFactory());
+//        WateringDao wateringDao = new WateringDao(hibernateBundle.getSessionFactory());
+//        environment.jersey().register(new UserResource(userDao, wateringDao));
+//        environment.jersey().register(new FlowerResource(flowerDao));
 
         ObjectMapper objectMapper = environment.getObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());

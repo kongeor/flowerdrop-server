@@ -13,6 +13,7 @@ import io.github.kongeor.flowerdrop.server.dto.WateringDto;
 import io.github.kongeor.flowerdrop.server.mapper.FlowerMapper;
 import io.github.kongeor.flowerdrop.server.mapper.UserMapper;
 
+import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import java.util.List;
@@ -24,6 +25,7 @@ public class UserResource {
     private final UserDao userDao;
     private final WateringDao wateringDao;
 
+    @Inject
     public UserResource(UserDao userDao, WateringDao wateringDao) {
         this.userDao = userDao;
         this.wateringDao = wateringDao;

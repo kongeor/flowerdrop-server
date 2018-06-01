@@ -6,7 +6,9 @@ import io.github.kongeor.flowerdrop.server.core.Flower;
 import io.github.kongeor.flowerdrop.server.dao.FlowerDao;
 import io.github.kongeor.flowerdrop.server.dto.FlowerDto;
 import io.github.kongeor.flowerdrop.server.mapper.FlowerMapper;
+import io.github.kongeor.flowerdrop.server.service.FlowerService;
 
+import javax.inject.Inject;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 
@@ -14,18 +16,18 @@ import javax.ws.rs.core.MediaType;
 @Produces(MediaType.APPLICATION_JSON)
 public class FlowerResource {
 
-    private final FlowerDao flowerDao;
+    private final FlowerService flowerService;
 
-    public FlowerResource(FlowerDao flowerDao) {
-        this.flowerDao = flowerDao;
+    @Inject
+    public FlowerResource(FlowerService flowerService) {
+        this.flowerService = flowerService;
     }
 
     @Path("/{id}")
     @GET
     @Timed
-    @UnitOfWork
     public FlowerDto findFlower(@PathParam("id") Integer id) {
-        Flower flower = flowerDao.findById(id);
+        Flower flower = flowerService.findById(id);
         return FlowerMapper.INSTANCE.flowerToDto(flower);
     }
 
@@ -37,8 +39,7 @@ public class FlowerResource {
         Flower flower = new Flower();
         flower.setName(flowerDto.getName());
         flower.setDescription(flowerDto.getDescription());
-        int id = flowerDao.create(flower);
-        Flower dbFlower = flowerDao.findById(id);
+        Flower dbFlower = flowerService.create(flower);
         return FlowerMapper.INSTANCE.flowerToDto(dbFlower);
     }
 }
