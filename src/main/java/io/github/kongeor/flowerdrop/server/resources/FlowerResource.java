@@ -26,9 +26,10 @@ public class FlowerResource {
     @Path("/{id}")
     @GET
     @Timed
+//    @UnitOfWork(transactional = false)
     public FlowerDto findFlower(@PathParam("id") Integer id) {
-        Flower flower = flowerService.findById(id);
-        return FlowerMapper.INSTANCE.flowerToDto(flower);
+        FlowerDto flower = flowerService.findById(id);
+        return flower;
     }
 
     @POST

@@ -3,6 +3,8 @@ package io.github.kongeor.flowerdrop.server.service;
 import io.dropwizard.hibernate.UnitOfWork;
 import io.github.kongeor.flowerdrop.server.core.Flower;
 import io.github.kongeor.flowerdrop.server.dao.FlowerDao;
+import io.github.kongeor.flowerdrop.server.dto.FlowerDto;
+import io.github.kongeor.flowerdrop.server.mapper.FlowerMapper;
 
 import javax.inject.Inject;
 
@@ -16,12 +18,13 @@ public class FlowerService {
     }
 
     @UnitOfWork(transactional = false)
-    public Flower findById(int id) {
-        return flowerDao.findById(id);
+    public FlowerDto findById(int id) {
+        Flower flower  = flowerDao.findById(id);
+        return FlowerMapper.INSTANCE.flowerToDto(flower);
     }
 
     public Flower create(Flower flower) {
         int id = flowerDao.create(flower);
-        return findById(id);
+        return flowerDao.findById(id);
     }
 }
