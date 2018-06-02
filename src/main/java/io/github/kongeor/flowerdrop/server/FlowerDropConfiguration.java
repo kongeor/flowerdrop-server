@@ -23,4 +23,18 @@ public class FlowerDropConfiguration extends Configuration {
     public DataSourceFactory getDataSourceFactory() {
         return database;
     }
+
+    @Valid
+    @NotNull
+    private DataSourceFactory logDatabase = new DataSourceFactory();
+
+    @JsonProperty("logDatabase")
+    public void setLogDatabase(DataSourceFactory factory) {
+        this.logDatabase = factory;
+    }
+
+    @JsonProperty("logDatabase")
+    public DataSourceFactory getLogDatabase() {
+        return this.logDatabase;
+    }
 }

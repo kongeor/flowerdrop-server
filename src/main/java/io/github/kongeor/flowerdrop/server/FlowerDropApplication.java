@@ -15,6 +15,7 @@ import io.dropwizard.hibernate.UnitOfWorkAspect;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.github.kongeor.flowerdrop.server.core.Flower;
+import io.github.kongeor.flowerdrop.server.core.FlowerLog;
 import io.github.kongeor.flowerdrop.server.core.User;
 import io.github.kongeor.flowerdrop.server.core.Watering;
 import io.github.kongeor.flowerdrop.server.dao.FlowerDao;
@@ -29,6 +30,7 @@ import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import ru.vyarus.dropwizard.guice.GuiceBundle;
 
+import javax.inject.Named;
 import java.lang.reflect.InvocationTargetException;
 
 public class FlowerDropApplication extends Application<FlowerDropConfiguration> {
@@ -42,14 +44,11 @@ public class FlowerDropApplication extends Application<FlowerDropConfiguration> 
         return "FlowerDrop";
     }
 
-    private final HibernateBundle<FlowerDropConfiguration> hibernateBundle =
-            new HibernateBundle<FlowerDropConfiguration>(User.class, Flower.class,
-                    Watering.class) {
-                @Override
-                public PooledDataSourceFactory getDataSourceFactory(FlowerDropConfiguration configuration) {
-                    return configuration.getDataSourceFactory();
-                }
-            };
+    private final HbnBundle hibernateBundle = new HbnBundle("hibernate", User.class, Flower.class,
+                    Watering.class);
+
+    private final HbnBundle logBundle = new HbnBundle("log", FlowerLog.class);
+
     private final FlywayBundle<FlowerDropConfiguration> flywayBundle =
             new FlywayBundle<FlowerDropConfiguration>() {
 
@@ -64,29 +63,57 @@ public class FlowerDropApplication extends Application<FlowerDropConfiguration> 
 
         // needs to come first
         bootstrap.addBundle(hibernateBundle);
+        bootstrap.addBundle(logBundle);
 
         bootstrap.addBundle(GuiceBundle.builder()
                 .enableAutoConfig(getClass().getPackage().getName())
-                .modules(new HbnModule(hibernateBundle))
+                .modules(new HbnModule(hibernateBundle, logBundle))
                 .build());
 
         bootstrap.addBundle(flywayBundle);
     }
 
+    private static class HbnBundle extends HibernateBundle<FlowerDropConfiguration> {
+
+        private final String name;
+
+        protected HbnBundle(String name, Class<?> entity, Class<?> ...entities) {
+            super(entity, entities);
+            this.name = name;
+        }
+
+        @Override
+        public PooledDataSourceFactory getDataSourceFactory(FlowerDropConfiguration configuration) {
+            if (name.equals("hibernate")) {
+                return configuration.getDataSourceFactory();
+            } else {
+                return configuration.getLogDatabase();
+            }
+        }
+
+        @Override
+        public String name() {
+            return name;
+        }
+    }
+
     private static class HbnModule extends AbstractModule {
 
-        private final HibernateBundle<FlowerDropConfiguration> hbnBundle;
+        private final HbnBundle hbnBundle;
+        private final HbnBundle logBundle;
 
-        public HbnModule(HibernateBundle<FlowerDropConfiguration> hbnBundle) {
+        public HbnModule(HbnBundle hbnBundle, HbnBundle logBundle) {
             this.hbnBundle = hbnBundle;
+            this.logBundle = logBundle;
         }
 
         @Override
         protected void configure() {
             bind(SessionFactory.class).toInstance(hbnBundle.getSessionFactory());
+            bind(SessionFactory.class).annotatedWith(Named.class).toInstance(logBundle.getSessionFactory());
 
             bindInterceptor(Matchers.any(), Matchers.annotatedWith(UnitOfWork.class),
-                    new UnitOfWorkInterceptor(hbnBundle));
+                    new UnitOfWorkInterceptor(hbnBundle, logBundle));
         }
     }
 
@@ -98,11 +125,10 @@ public class FlowerDropApplication extends Application<FlowerDropConfiguration> 
 
         private final ImmutableMap<String, SessionFactory> sessionFactories;
 
-        public UnitOfWorkInterceptor(HibernateBundle<?>... bundles) {
+        public UnitOfWorkInterceptor(HbnBundle... bundles) {
             final ImmutableMap.Builder<String, SessionFactory> sessionFactoriesBuilder = ImmutableMap.builder();
-            for (HibernateBundle<?> bundle : bundles) {
-//                sessionFactoriesBuilder.put(bundle.name(), bundle.getSessionFactory());
-                sessionFactoriesBuilder.put("hibernate", bundle.getSessionFactory());
+            for (HbnBundle bundle : bundles) {
+                sessionFactoriesBuilder.put(bundle.name(), bundle.getSessionFactory());
             }
             sessionFactories = sessionFactoriesBuilder.build();
         }
