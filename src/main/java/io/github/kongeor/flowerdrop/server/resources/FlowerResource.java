@@ -34,13 +34,8 @@ public class FlowerResource {
 
     @POST
     @Timed
-    @UnitOfWork
     @Consumes(MediaType.APPLICATION_JSON)
     public FlowerDto createFlower(FlowerDto flowerDto) {
-        Flower flower = new Flower();
-        flower.setName(flowerDto.getName());
-        flower.setDescription(flowerDto.getDescription());
-        Flower dbFlower = flowerService.create(flower);
-        return FlowerMapper.INSTANCE.flowerToDto(dbFlower);
+        return flowerService.create(flowerDto);
     }
 }

@@ -28,20 +28,28 @@ public class FlowerService {
 
     @UnitOfWork(transactional = false)
     public FlowerDto findById(int id) {
-        addLogEntry(id);
+        addLogEntry("Fetching flower with id = " + id);
         Flower flower = flowerDao.findById(id);
         return FlowerMapper.INSTANCE.flowerToDto(flower);
     }
 
     @UnitOfWork("log")
-    public void addLogEntry(int flowerId) {
+    public void addLogEntry(String text) {
         FlowerLog log = new FlowerLog();
-        log.setDescription("Fetching flower with id = " + flowerId);
+        log.setDescription(text);
         flowerLogDao.create(log);
     }
 
-    public Flower create(Flower flower) {
+    @UnitOfWork
+    public FlowerDto create(FlowerDto flowerDto) {
+
+        addLogEntry("Creating flower : " + flowerDto);
+
+        Flower flower = new Flower();
+        flower.setName(flowerDto.getName());
+        flower.setDescription(flowerDto.getDescription());
         int id = flowerDao.create(flower);
-        return flowerDao.findById(id);
+        Flower byId = flowerDao.findById(id);
+        return FlowerMapper.INSTANCE.flowerToDto(byId);
     }
 }
